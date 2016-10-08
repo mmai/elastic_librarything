@@ -7,7 +7,12 @@ A node script to import librarything data into elasticsearch
 * Install [docker compose](https://docs.docker.com/compose/install/)
 * build docker instances `docker-compose up -d`
 * copy settings.dist.js to settings.js and set your Librarything username in *librarything.userid*, you can change the name of the elasticsearch index if you want
-* launch import script `node ./elastic_librarything.js --reset`
+* launch import script
+
+```sh
+npm install
+node ./elastic_librarything.js --reset
+```
 
 ## View data
 
