@@ -12,7 +12,7 @@ A node script to import librarything data into elasticsearch
 ## View data
 
 * make sure docker instances are started `docker-compose start`
-* open the page *http://1207.0.0.1:5601* in your web browser 
+* open the page *http://127.0.0.1:5601* in your web browser 
 * configure an index pattern in kibana
   * unselect 'index contains time-based events'
   * replace `logstash-*` by the elasticsearch.index you configured in settings.js 
