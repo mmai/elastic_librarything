@@ -2,21 +2,22 @@
 
 A node script to import librarything data into elasticsearch
 
-## Installation
+## Step 0 : Install an elasticsearch docker instance (optional) 
 
 * Install [docker compose](https://docs.docker.com/compose/install/)
 * build docker instances `docker-compose up -d`
-* copy settings.dist.js to settings.js and set your Librarything username in *librarything.userid*, you can change the name of the elasticsearch index if you want
-* launch import script
 
-```sh
-npm install
-node ./elastic_librarything.js --reset
-```
+## Step 2 : Import data
 
-## View data
+* install dependencies `npm install`
+* launch import script `node ./bin/elastic-librarything.js --reset`
+  * with the option `--reset` to initiate the database
+  * with the option `--url=http://...` to use a custom elasticsearch instance (default : 'http://localhost:9200' the docker instance set in step 0)
+  * with the option `--index=myindex` to use a custom elasticsearch index (default : 'librarything')
 
-* make sure docker instances are started `docker-compose start`
+## Step 3 : View data with Kibana (optional)
+
+* Make sure docker instances are started `docker-compose start`
 * open the page *http://127.0.0.1:5601* in your web browser 
 * configure an index pattern in kibana
   * unselect 'index contains time-based events'

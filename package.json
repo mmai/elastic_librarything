@@ -1,18 +1,17 @@
 {
-  "name": "elastic_librarything",
-  "version": "1.0.0",
+  "name": "elastic-librarything",
+  "version": "0.1.0",
   "description": "",
-  "main": "elastic_librarything.js",
+  "bin": "./bin/elastic-librarything.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "docker-compose up -d",
-    "start": "docker-compose start"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "elasticsearch": "^11.0.1",
     "lodash": "^4.16.3",
+    "meow": "^3.7.0",
     "minimist": "^1.2.0",
     "proxapi": "^0.4",
     "request": "^2.75.0"

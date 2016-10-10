@@ -1,20 +1,13 @@
 //TODO : 
-// * params
 // * recupérer automatiquement le nombre de livres
 // * si aucun livre : réinit schema 
 // * mise à jours =>  get last date puis requete 
 
-var request = require('request');
-var _ = require('lodash');
-var elasticsearch = require('elasticsearch');
-var ProxAPI = require("proxapi");
-var settings = require("./settings");
-
-var client = new elasticsearch.Client({
-    host: settings.elasticsearch.url,
-    // requestTimeout: 3000,
-  // log: 'trace'
-});
+const request = require('request');
+const _ = require('lodash');
+const meow = require("meow")
+const elasticsearch = require('elasticsearch');
+const ProxAPI = require("proxapi");
 
 const librarythingMapping = {
   type: 'book',
@@ -39,19 +32,48 @@ const librarythingMapping = {
   }
 }
 
-var argv = require('minimist')(process.argv.slice(2));
-if (argv.hasOwnProperty("reset")){
-  initialize().then(update, (err) => {console.error('main');console.error(err)})
-} else {
-  update();
+const cli = meow(`
+  Usage
+  $ elastic-librarything <librarythingUserId>
+
+  Options
+  --reset Rebuild database
+  --url=<elasticsearch url>  (default 'librarything')
+  --index=<elasticsearch index> (default 'http://localhost:9200')
+  `)
+
+let elasticsearchIndex = cli.flags.hasOwnProperty("index") ? cli.flags['index'] : 'librarything'
+let elasticsearchUrl = cli.flags.hasOwnProperty("url") ? cli.flags['url'] : 'http://localhost:9200'
+let needReset = cli.flags.hasOwnProperty("reset")
+let librarythingUserId = cli.input.length == 0  ? null : cli.input[0]
+
+if (librarythingUserId === null){
+  throw("missing parameter : Librarything username ")
 }
 
-function initialize(){
+const client = new elasticsearch.Client({
+    host: elasticsearchUrl,
+    // requestTimeout: 3000,
+  // log: 'trace'
+});
+
+//Main
+if (needReset){
+  initializeElastic().then(() => {
+      update(librarythingUserId);
+    }, (err) => {console.error(err)} 
+  )
+} else {
+  update(librarythingUserId);
+}
+  
+
+function initializeElastic(){
   return new Promise((resolve, reject) => {
-      client.indices.exists({ index: settings.elasticsearch.index }).then((exists) => {
+      client.indices.exists({ index: elasticsearchIndex }).then((exists) => {
           if (exists) {
             console.log("deleting");
-            client.indices.delete({ index: settings.elasticsearch.index }).then(() => {
+            client.indices.delete({ index: elasticsearchIndex }).then(() => {
                 createIndex(resolve, reject)
               }, reject)
           } else {
@@ -63,17 +85,17 @@ function initialize(){
 
 function createIndex(resolve, reject){
   console.log('creating index')
-  client.indices.create({ index: settings.elasticsearch.index }).then(() => {
-      client.indices.getMapping({ index: settings.elasticsearch.index }).then((res) => {
+  client.indices.create({ index: elasticsearchIndex }).then(() => {
+      client.indices.getMapping({ index: elasticsearchIndex }).then((res) => {
           console.log('creating mapping')
           client.indices.putMapping(librarythingMapping).then(resolve, reject)
         }, reject)
     }, reject)
 }
 
-function update(){
+function update(librarythingUserId){
   console.log('updating...')
-  url = 'http://www.librarything.com/api_getdata.php?showDates=1&userid='+settings.librarything.userid+'&booksort=entry_REV&responseType=json&max=100000';
+  url = 'http://www.librarything.com/api_getdata.php?showDates=1&userid='+librarythingUserId+'&booksort=entry_REV&responseType=json&max=100000';
 
   request(url, function (err, res, json) {
       console.log('fetching...')
@@ -85,7 +107,7 @@ function update(){
         // console.log(_(books).map(cleanData));
         console.log('adding...')
         // var addBooksPromises = _(books).map(cleanData).map(addBook)
-        var addBooksPromises = _(books).map(cleanData).map(addBook_withproxy)
+        var addBooksPromises = _(books).map(cleanData).map(addBook)
         Promise.all(addBooksPromises).then((res) => {
             console.log(res.length, "books imported")
           }, (err) => {
@@ -153,9 +175,9 @@ var bonsai_proxy = new ProxAPI({
   }
 });
 
-function addBook_withproxy(book) {
+function addBook(book) {
   var params = {
-      index: settings.elasticsearch.index,
+      index: elasticsearchIndex,
       type: 'book',
       id: book.id,
       body: book
@@ -172,24 +194,3 @@ function addBook_withproxy(book) {
     })
 }
 
-function addBook(book) {
-  var params = {
-    index:  settings.elasticsearch.index,
-    type: 'book',
-    id: book.id,
-    body: book
-  };
-
-  return new Promise((resolve, reject) => {
-      client.index(params).then( (response) => {
-          mess = "inserted: " + response._id
-          console.log(mess);
-          resolve(mess);
-        }, (err) => {
-          console.log(err)
-          mess = "=========addBook error: " + params.id
-          resolve(mess)
-      } )
-    
-  })
-}
