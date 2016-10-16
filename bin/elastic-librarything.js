@@ -1,8 +1,3 @@
-//TODO : 
-// * recupérer automatiquement le nombre de livres
-// * si aucun livre : réinit schema 
-// * mise à jours =>  get last date puis requete 
-
 const request = require('request');
 const _ = require('lodash');
 const meow = require("meow")
@@ -158,7 +153,7 @@ function formatDate(timestamp){
   return (new Date(timestamp * 1000)).toJSON();
 }
 
-var bonsai_proxy = new ProxAPI({
+var elastic_proxy = new ProxAPI({
   retryDelay: 3, //On tente la requête toutes les 3s
   translate: function(params, proxy_callback){ 
     client.index( params ).then((response) => {
@@ -184,7 +179,7 @@ function addBook(book) {
     };
 
   return new Promise((resolve, reject) => {
-      bonsai_proxy.call(params, {strategy: 'retry'}, function(err, results){
+      elastic_proxy.call(params, {strategy: 'retry'}, function(err, results){
           if (err) {
             resolve(err)
           } else {
