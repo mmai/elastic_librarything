@@ -45,22 +45,33 @@ function initView(model){
 function generateYearStats(year){
   var pBuy = getBooksByMonth(year, 'buy');
   var pStart = getBooksByMonth(year, 'start');
-  var pEnd = getBooksByMonth(year, 'end');
+  var pFinished = getBooksByMonth(year, 'end');
 
-  Promise.all([pBuy, pStart, pEnd]).then(function(res){
+  Promise.all([pBuy, pStart, pFinished]).then(function(res){
       var buyed = getBookData(res[0]);
+      var total_acquired = buyed.reduce(function(acc, cur){ return acc + cur; });
       buyed.unshift('buyed');
+
       var started = getBookData(res[1]);
+      var total_started = started.reduce(function(acc, cur){ return acc + cur; });
       started.unshift('started');
-      var ended = getBookData(res[2]);
-      ended.unshift('ended');
+
+      var finished = getBookData(res[2]);
+      var total_finished = finished.reduce(function(acc, cur){ return acc + cur; });
+      finished.unshift('finished');
+
+      document.getElementById("summary-title").innerHTML = year;
+      document.getElementById("summary-aquired").innerHTML = total_acquired;
+      document.getElementById("summary-started").innerHTML = total_started;
+      document.getElementById("summary-finished").innerHTML = total_finished;
 
       var data = {
-        columns: [ buyed, started, ended],
+        columns: [ buyed, started, finished],
         type: 'bar'
       }
 
       var chart = c3.generate({
+          bindto: '#chart-asf',
           axis: {
             x: {
               type: 'category',

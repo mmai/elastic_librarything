@@ -90,7 +90,7 @@ function createIndex(resolve, reject){
 
 function update(librarythingUserId){
   console.log('updating...')
-  url = 'http://www.librarything.com/api_getdata.php?showDates=1&userid='+librarythingUserId+'&booksort=entry_REV&responseType=json&max=100000';
+  url = 'http://www.librarything.com/api_getdata.php?showDates=1&showReviews=1&showTags=1&userid='+librarythingUserId+'&booksort=entry_REV&responseType=json&max=100000';
 
   request(url, function (err, res, json) {
       console.log('fetching...')
@@ -133,7 +133,9 @@ function cleanData(book_data){
   addBookField('language_secondary', book_data.language_secondary);
   addBookField('language_original', book_data.language_original);
   addBookField('hasreview', book_data.hasreview);
+  addBookField('review', book_data.bookreview); //Extract
   addBookField('cover', book_data.cover);
+  addBookField('tags', book_data.tags);
   addBookField('entry_date', book_data.entry_stamp, formatDate);
   addBookField('buy_date', book_data.dateacquired_stamp, formatDate);
   addBookField('start_date', startDate, formatDate);
