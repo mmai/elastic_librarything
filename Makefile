@@ -1,5 +1,7 @@
-build:
+build-docker:
 	docker-compose up -d
+dev:
+	watchify src/main.js -t babelify -o js/main.js -v
 start:
 	# docker-compose start
 	docker start elasticlibrarything_elasticsearch-int_1

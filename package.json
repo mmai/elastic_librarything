@@ -1,8 +1,10 @@
 {
   "name": "elastic-librarything",
   "version": "0.1.0",
-  "description": "",
-  "bin": "./bin/elastic-librarything.js",
+  "description": "A node script to import librarything data into elasticsearch",
+  "bin": {
+    "elastic-librarything": "./bin/elastic-librarything.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -15,5 +17,17 @@
     "minimist": "^1.2.0",
     "proxapi": "^0.4",
     "request": "^2.75.0"
-  }
+  },
+  "main": "index.js",
+  "devDependencies": {
+    "babelify": "^7.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mmai/elastic_librarything.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mmai/elastic_librarything/issues"
+  },
+  "homepage": "https://github.com/mmai/elastic_librarything#readme"
 }
