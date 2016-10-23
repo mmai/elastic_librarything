@@ -1,8 +1,13 @@
-// require("babel-polyfill");
 
-const query = require('./booksQueries') 
+const query = require('./booksQueries').initClient({
+    elasticsearchUrl: 'http://127.0.0.1:9200',
+    elasticsearchIndex: 'librarything'
+}) 
 
-initModel().then(initView, (err) => {console.log(err)})
+initModel().then(
+  initView,
+  (err) => {console.log(err)}
+)
 
 function initModel(){
   return new Promise((resolve, reject) => {
@@ -54,10 +59,16 @@ function generateYearStats(year){
       var total_finished = finished.reduce(function(acc, cur){ return acc + cur; });
       finished.unshift('finished');
 
-      const ratings = res[2].avg_ratings_by_month;
-      let avg_rating = ratings.reduce((acc, r) => acc + r) / ratings.length;
+      const avg_ratings = res[2].avg_ratings_by_month;
+      let avg_rating = avg_ratings.reduce((acc, r) => acc + r) / avg_ratings.length;
 
       avg_rating = Math.round(100 * avg_rating) / 100;
+
+      const ratings = res[2].ratings_by_month
+      const ratings_ids = Object.keys(ratings).sort((a,b) => (a > b))
+      let ratings_count = ratings_ids.map((k) => ratings[k])
+      ratings_count.unshift('ratings')
+
 
       document.getElementById("summary-title").innerHTML = year;
       document.getElementById("summary-aquired").innerHTML = total_acquired;
@@ -65,12 +76,8 @@ function generateYearStats(year){
       document.getElementById("summary-finished").innerHTML = total_finished;
       document.getElementById("summary-rating").innerHTML = avg_rating;
 
-      var data = {
-        columns: [ buyed, started, finished],
-        type: 'bar'
-      }
-
-      var chart = c3.generate({
+      // Acquired, started, finished
+      c3.generate({
           bindto: '#chart-asf',
           axis: {
             x: {
@@ -78,9 +85,25 @@ function generateYearStats(year){
               categories: ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec']
             }
           },
-          data: data,
+          data: { columns: [ buyed, started, finished], type: 'bar' },
           bar: { width: { }, }
-        });
+        })
+
+      // Repartition of ratings
+      c3.generate({
+          bindto: '#chart-ratings',
+          axis: {
+            x: {
+              type: 'category',
+              categories: ratings_ids
+            }
+          },
+          data: { columns: [ratings_count], type: 'bar' },
+          bar: { width: { }, }
+        })
+
+
+
     }, function(err){
       console.log('error...');
       console.error(err);

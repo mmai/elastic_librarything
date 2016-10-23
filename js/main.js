@@ -1,11 +1,22 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-'use strict';
+"use strict";
 
-var elasticsearchUrl = 'http://127.0.0.1:9200';
-var elasticsearchIndex = 'librarything';
-var client = new elasticsearch.Client({
-  host: elasticsearchUrl
-});
+var client;
+var elasticsearchIndex;
+
+function initClient(options) {
+  client = new elasticsearch.Client({
+    host: options.elasticsearchUrl
+  });
+  elasticsearchIndex = options.elasticsearchIndex;
+
+  return {
+    getYears: getYears,
+    getBoughtBooksByMonth: getBoughtBooksByMonth,
+    getStartedBooksByMonth: getStartedBooksByMonth,
+    getFinishedBooksByMonth: getFinishedBooksByMonth
+  };
+}
 
 function queryAndTransform(query, transformFunc) {
   return new Promise(function (resolve, reject) {
@@ -46,11 +57,10 @@ function getYears() {
   };
 
   var transformFunc = function transformFunc(res) {
-    var data = res.aggregations.years.buckets.map(function (y) {
-      return y.key_as_string.substring(0, 4);
-    });
     return {
-      years: data
+      years: res.aggregations.years.buckets.map(function (y) {
+        return y.key_as_string.substring(0, 4);
+      })
     };
   };
 
@@ -146,19 +156,61 @@ function getFinishedBooksByMonth(year) {
           "aggs": {
             "rating": { "avg": { "field": "rating" } }
           }
+        },
+        "ratings_by_month": {
+          "terms": { "field": "rating" }
         }
       }
     }
   };
 
   var transformFunc = function transformFunc(res) {
+    var ratings = {
+      "0.5": 0,
+      "1": 0,
+      "1.5": 0,
+      "2": 0,
+      "2.5": 0,
+      "3": 0,
+      "3.5": 0,
+      "4": 0,
+      "4.5": 0,
+      "5": 0
+    };
+
+    var _iteratorNormalCompletion = true;
+    var _didIteratorError = false;
+    var _iteratorError = undefined;
+
+    try {
+      for (var _iterator = res.aggregations.ratings_by_month.buckets[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+        var bucket = _step.value;
+
+        ratings[bucket.key] = bucket.doc_count;
+      }
+    } catch (err) {
+      _didIteratorError = true;
+      _iteratorError = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion && _iterator.return) {
+          _iterator.return();
+        }
+      } finally {
+        if (_didIteratorError) {
+          throw _iteratorError;
+        }
+      }
+    }
+
     return {
       finished_books_by_month: res.aggregations.finished_books_by_month.buckets.map(function (m) {
         return m.doc_count;
       }),
       avg_ratings_by_month: res.aggregations.finished_books_by_month.buckets.map(function (m) {
         return m.rating.value;
-      })
+      }),
+      ratings_by_month: ratings
     };
   };
 
@@ -166,18 +218,16 @@ function getFinishedBooksByMonth(year) {
 }
 
 module.exports = {
-  getYears: getYears,
-  getBoughtBooksByMonth: getBoughtBooksByMonth,
-  getStartedBooksByMonth: getStartedBooksByMonth,
-  getFinishedBooksByMonth: getFinishedBooksByMonth
+  initClient: initClient
 };
 
 },{}],2:[function(require,module,exports){
 'use strict';
 
-// require("babel-polyfill");
-
-var query = require('./booksQueries');
+var query = require('./booksQueries').initClient({
+  elasticsearchUrl: 'http://127.0.0.1:9200',
+  elasticsearchIndex: 'librarything'
+});
 
 initModel().then(initView, function (err) {
   console.log(err);
@@ -233,12 +283,21 @@ function generateYearStats(year) {
     });
     finished.unshift('finished');
 
-    var ratings = res[2].avg_ratings_by_month;
-    var avg_rating = ratings.reduce(function (acc, r) {
+    var avg_ratings = res[2].avg_ratings_by_month;
+    var avg_rating = avg_ratings.reduce(function (acc, r) {
       return acc + r;
-    }) / ratings.length;
+    }) / avg_ratings.length;
 
     avg_rating = Math.round(100 * avg_rating) / 100;
+
+    var ratings = res[2].ratings_by_month;
+    var ratings_ids = Object.keys(ratings).sort(function (a, b) {
+      return a > b;
+    });
+    var ratings_count = ratings_ids.map(function (k) {
+      return ratings[k];
+    });
+    ratings_count.unshift('ratings');
 
     document.getElementById("summary-title").innerHTML = year;
     document.getElementById("summary-aquired").innerHTML = total_acquired;
@@ -246,12 +305,8 @@ function generateYearStats(year) {
     document.getElementById("summary-finished").innerHTML = total_finished;
     document.getElementById("summary-rating").innerHTML = avg_rating;
 
-    var data = {
-      columns: [buyed, started, finished],
-      type: 'bar'
-    };
-
-    var chart = c3.generate({
+    // Acquired, started, finished
+    c3.generate({
       bindto: '#chart-asf',
       axis: {
         x: {
@@ -259,7 +314,20 @@ function generateYearStats(year) {
           categories: ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec']
         }
       },
-      data: data,
+      data: { columns: [buyed, started, finished], type: 'bar' },
+      bar: { width: {} }
+    });
+
+    // Repartition of ratings
+    c3.generate({
+      bindto: '#chart-ratings',
+      axis: {
+        x: {
+          type: 'category',
+          categories: ratings_ids
+        }
+      },
+      data: { columns: [ratings_count], type: 'bar' },
       bar: { width: {} }
     });
   }, function (err) {

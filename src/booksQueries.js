@@ -1,8 +1,21 @@
-const elasticsearchUrl = 'http://127.0.0.1:9200';
-const elasticsearchIndex = 'librarything';
-const client = new elasticsearch.Client({
-    host: elasticsearchUrl
-  });
+var client
+var elasticsearchIndex
+
+function initClient(options) {
+  client = new elasticsearch.Client({
+      host: options.elasticsearchUrl
+  })
+  elasticsearchIndex = options.elasticsearchIndex
+
+  return {
+    getYears,
+    getBoughtBooksByMonth,
+    getStartedBooksByMonth,
+    getFinishedBooksByMonth,
+  }
+
+}
+
 
 function queryAndTransform(query, transformFunc){
   return new Promise((resolve, reject) => {
@@ -141,23 +154,41 @@ function getFinishedBooksByMonth(year){
             "rating": { "avg": { "field":"rating" } }
           }
         },
+        "ratings_by_month": {
+          "terms": { "field": "rating" }
+        }
       } 
     } 
   }
 
-  const transformFunc = ( (res) => (
-      {
-        finished_books_by_month: res.aggregations.finished_books_by_month.buckets.map( (m) => m.doc_count ),
-        avg_ratings_by_month: res.aggregations.finished_books_by_month.buckets.map( (m) => m.rating.value )
+  const transformFunc = ( (res) => {
+      let ratings = {
+        "0.5": 0,
+        "1": 0,
+        "1.5": 0,
+        "2": 0,
+        "2.5": 0,
+        "3": 0,
+        "3.5": 0,
+        "4": 0,
+        "4.5": 0,
+        "5": 0
       }
-    ))
+
+      for (let bucket of res.aggregations.ratings_by_month.buckets){
+        ratings[bucket.key] = bucket.doc_count
+      } 
+
+      return {
+        finished_books_by_month: res.aggregations.finished_books_by_month.buckets.map( (m) => m.doc_count ),
+        avg_ratings_by_month: res.aggregations.finished_books_by_month.buckets.map( (m) => m.rating.value ),
+        ratings_by_month: ratings
+      }
+    })
 
   return queryAndTransform( query, transformFunc) 
 }
 
 module.exports = {
-  getYears,
-  getBoughtBooksByMonth,
-  getStartedBooksByMonth,
-  getFinishedBooksByMonth,
-}
+  initClient
+} 
