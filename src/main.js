@@ -1,3 +1,4 @@
+var moment = require('moment')
 
 const query = require('./booksQueries').initClient({
     elasticsearchUrl: 'http://127.0.0.1:9200',
@@ -107,6 +108,72 @@ function generateYearStats(year){
     }, function(err){
       console.log('error...');
       console.error(err);
-    });
+    })
+
+  query.getBooks(year).then((res) => {
+      const journal = makeJournal(res.books, year)
+      let html = "<table class='.table'>";
+      for (let entry of journal){
+        html = html + '<tr>' +
+          '<td>' + moment(entry.date).format('MMMM Do') + '</td>' +
+          '<td>' + entry.type + '</td>' +
+          '<td>' + entry.book.author + '</td>' +
+          '<td>' + entry.book.title + '</td>' +
+          '<td>' + entry.book.rating + '</td>' +
+          '</tr>'
+      }
+      document.getElementById('journal').innerHTML = html
+    }, (err) => {
+      console.log('error...');
+      console.error(err);
+    })
 }
 
+function makeJournal(data, year){
+  let journal = []
+  for (let book of data){
+    if (book.hasOwnProperty('buy_date') && book.buy_date.indexOf(year) != -1){
+      journal.push({
+          type: 'acquired',
+          date: book.buy_date,
+          book: book
+        })
+    }
+    if (book.hasOwnProperty('start_date') && book.start_date.indexOf(year) != -1){
+      journal.push({
+          type: 'started',
+          date: book.start_date,
+          book: book
+        })
+    }
+    if (book.hasOwnProperty('end_date') && book.end_date.indexOf(year) != -1){
+      journal.push({
+          type: 'finished',
+          date: book.end_date,
+          book: book
+        })
+    }
+  }
+
+  journal.sort((a, b) => {
+      if (a.date != b.date){
+        return (a.date > b.date) ? 1 : -1
+      }
+      if (a.type != b.type){
+        switch (a.type){
+        case 'finished':
+          return 1;
+          break;
+        case 'started':
+          return (b.type == 'finished') ? -1 : 1
+          break;
+        case 'acquired':
+        default: 
+          return -1
+        }
+      }
+      return 0
+    })
+
+  return journal
+}

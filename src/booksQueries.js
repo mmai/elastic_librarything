@@ -9,6 +9,7 @@ function initClient(options) {
 
   return {
     getYears,
+    getBooks,
     getBoughtBooksByMonth,
     getStartedBooksByMonth,
     getFinishedBooksByMonth,
@@ -67,10 +68,38 @@ function getYears(){
   return queryAndTransform( query, transformFunc) 
 }
 
+function getBooks(year){
+  const query = {
+    index: elasticsearchIndex,
+    body: {
+      "size":120,
+      "query": {
+        "bool": {
+          "filter": {
+            "or": [
+              {"range": { "end_date": { "from": year + "-01-01", "to": year + "-12-31" } } },
+              {"range": { "start_date": { "from": year + "-01-01", "to": year + "-12-31"} } },
+              {"range": { "buy_date": { "from": year + "-01-01", "to": year + "-12-31"} } }
+            ]
+          }   
+        }  
+      }
+    }
+  }
+
+  const transformFunc = ( (res) => (
+      {
+        books: res.hits.hits.map( (h) => h._source )
+      }
+    ))
+
+  return queryAndTransform( query, transformFunc) 
+}
+
 function getBoughtBooksByMonth(year){
   const query = {
     index: elasticsearchIndex,
-    size: 5,
+    size: 0,
     body: {
       "query": {
         "bool": {
@@ -103,7 +132,7 @@ function getBoughtBooksByMonth(year){
 function getStartedBooksByMonth(year){
   const query = {
     index: elasticsearchIndex,
-    size: 5,
+    size: 0,
     body: {
       "query": {
         "bool": {
@@ -135,7 +164,7 @@ function getStartedBooksByMonth(year){
 function getFinishedBooksByMonth(year){
   const query = {
     index: elasticsearchIndex,
-    size: 5,
+    size: 0,
     body: {
       "query": {
         "bool": {
