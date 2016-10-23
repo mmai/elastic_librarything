@@ -7,8 +7,58 @@ var client = new elasticsearch.Client({
   host: elasticsearchUrl
 });
 
+function queryAndTransform(query, transformFunc) {
+  return new Promise(function (resolve, reject) {
+    client.search(query).then(function (res) {
+      resolve(transformFunc(res));
+    }, reject);
+  });
+}
+
+function getYears() {
+  var query = {
+    index: elasticsearchIndex,
+    size: 0,
+    body: {
+      "size": 0,
+      "aggs": {
+        "years": {
+          "date_histogram": {
+            "field": "start_date",
+            "interval": "year"
+          },
+          "aggs": {
+            "years_bucket_filter": {
+              "bucket_selector": {
+                "buckets_path": {
+                  "booksCount": "_count"
+                },
+                "script": {
+                  "inline": "booksCount > 0",
+                  "lang": "expression"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+
+  var transformFunc = function transformFunc(res) {
+    var data = res.aggregations.years.buckets.map(function (y) {
+      return y.key_as_string.substring(0, 4);
+    });
+    return {
+      years: data
+    };
+  };
+
+  return queryAndTransform(query, transformFunc);
+}
+
 function getBoughtBooksByMonth(year) {
-  var request = {
+  var query = {
     index: elasticsearchIndex,
     size: 5,
     body: {
@@ -30,18 +80,19 @@ function getBoughtBooksByMonth(year) {
     }
   };
 
-  return new Promise(function (resolve, reject) {
-    client.search(request).then(function (res) {
-      var bought_books_by_month = res.aggregations.bought_books_by_month.buckets.map(function (m) {
+  var transformFunc = function transformFunc(res) {
+    return {
+      bought_books_by_month: res.aggregations.bought_books_by_month.buckets.map(function (m) {
         return m.doc_count;
-      });
-      resolve({ bought_books_by_month: bought_books_by_month });
-    }, reject);
-  });
+      })
+    };
+  };
+
+  return queryAndTransform(query, transformFunc);
 }
 
 function getStartedBooksByMonth(year) {
-  var request = {
+  var query = {
     index: elasticsearchIndex,
     size: 5,
     body: {
@@ -63,18 +114,19 @@ function getStartedBooksByMonth(year) {
     }
   };
 
-  return new Promise(function (resolve, reject) {
-    client.search(request).then(function (res) {
-      var started_books_by_month = res.aggregations.started_books_by_month.buckets.map(function (m) {
+  var transformFunc = function transformFunc(res) {
+    return {
+      started_books_by_month: res.aggregations.started_books_by_month.buckets.map(function (m) {
         return m.doc_count;
-      });
-      resolve({ started_books_by_month: started_books_by_month });
-    }, reject);
-  });
+      })
+    };
+  };
+
+  return queryAndTransform(query, transformFunc);
 }
 
 function getFinishedBooksByMonth(year) {
-  var request = {
+  var query = {
     index: elasticsearchIndex,
     size: 5,
     body: {
@@ -99,23 +151,22 @@ function getFinishedBooksByMonth(year) {
     }
   };
 
-  return new Promise(function (resolve, reject) {
-    client.search(request).then(function (res) {
-      var finished_books_by_month = res.aggregations.finished_books_by_month.buckets.map(function (m) {
+  var transformFunc = function transformFunc(res) {
+    return {
+      finished_books_by_month: res.aggregations.finished_books_by_month.buckets.map(function (m) {
         return m.doc_count;
-      });
-      var avg_ratings_by_month = res.aggregations.finished_books_by_month.buckets.map(function (m) {
+      }),
+      avg_ratings_by_month: res.aggregations.finished_books_by_month.buckets.map(function (m) {
         return m.rating.value;
-      });
-      resolve({
-        finished_books_by_month: finished_books_by_month,
-        avg_ratings_by_month: avg_ratings_by_month
-      });
-    }, reject);
-  });
+      })
+    };
+  };
+
+  return queryAndTransform(query, transformFunc);
 }
 
 module.exports = {
+  getYears: getYears,
   getBoughtBooksByMonth: getBoughtBooksByMonth,
   getStartedBooksByMonth: getStartedBooksByMonth,
   getFinishedBooksByMonth: getFinishedBooksByMonth
@@ -128,23 +179,20 @@ module.exports = {
 
 var query = require('./booksQueries');
 
-var model = initModel();
-initView(model);
+initModel().then(initView, function (err) {
+  console.log(err);
+});
 
 function initModel() {
-  var year = 2006;
-  var to = new Date().getFullYear();
-  var years = [];
-  while (year < to) {
-    years.push(year);
-    year += 1;
-  }
-
-  return {
-    input: {
-      years: years
-    }
-  };
+  return new Promise(function (resolve, reject) {
+    query.getYears().then(function (res) {
+      resolve({
+        input: {
+          years: res.years
+        }
+      });
+    }, reject);
+  });
 }
 
 function initView(model) {

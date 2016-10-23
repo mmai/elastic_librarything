@@ -4,8 +4,58 @@ const client = new elasticsearch.Client({
     host: elasticsearchUrl
   });
 
+function queryAndTransform(query, transformFunc){
+  return new Promise((resolve, reject) => {
+      client.search(query).then(
+        (res) => {
+          resolve(transformFunc(res))
+        } , reject
+      ) 
+    })
+}
+
+
+function getYears(){
+  const query = {
+    index: elasticsearchIndex,
+    size: 0,
+    body: {
+      "size": 0,
+      "aggs": {
+        "years": {
+          "date_histogram": {
+            "field": "start_date",
+            "interval": "year"
+          },
+          "aggs": {
+            "years_bucket_filter": {
+              "bucket_selector": {
+                "buckets_path": {
+                  "booksCount": "_count"
+                },
+                "script": {
+                	"inline": "booksCount > 0",
+                	 "lang": "expression"
+                	}
+              }
+            }
+          }
+        }
+      } 
+    }
+  }
+
+  const transformFunc =( (res) => ({
+          years: res.aggregations.years.buckets.map( 
+            (y) => y.key_as_string.substring(0, 4)
+          )
+        }))
+
+  return queryAndTransform( query, transformFunc) 
+}
+
 function getBoughtBooksByMonth(year){
-  var request = {
+  const query = {
     index: elasticsearchIndex,
     size: 5,
     body: {
@@ -25,22 +75,20 @@ function getBoughtBooksByMonth(year){
         },
       } 
     } 
-  };
+  }
 
-  return new Promise(function(resolve, reject){
-      client.search(request).then(
-        function(res){
-          var bought_books_by_month = res.aggregations.bought_books_by_month.buckets.map(function(m){
-              return m.doc_count
-            });
-          resolve({bought_books_by_month});
-        }, reject); 
-    })
+  const transformFunc = ( (res) => (
+      {
+        bought_books_by_month: res.aggregations.bought_books_by_month.buckets.map( (m) => m.doc_count )
+      }
+    ))
+
+  return queryAndTransform( query, transformFunc) 
 
 }
 
 function getStartedBooksByMonth(year){
-  var request = {
+  const query = {
     index: elasticsearchIndex,
     size: 5,
     body: {
@@ -62,20 +110,17 @@ function getStartedBooksByMonth(year){
     } 
   };
 
-  return new Promise(function(resolve, reject){
-      client.search(request).then(
-        function(res){
-          var started_books_by_month = res.aggregations.started_books_by_month.buckets.map(function(m){
-              return m.doc_count
-            });
-          resolve({started_books_by_month});
-        }, reject); 
-    })
+  const transformFunc = ( (res) => (
+      {
+        started_books_by_month: res.aggregations.started_books_by_month.buckets.map( (m) => m.doc_count )
+      }
+    ))
 
+  return queryAndTransform( query, transformFunc) 
 }
 
 function getFinishedBooksByMonth(year){
-  var request = {
+  const query = {
     index: elasticsearchIndex,
     size: 5,
     body: {
@@ -98,26 +143,20 @@ function getFinishedBooksByMonth(year){
         },
       } 
     } 
-  };
+  }
 
-  return new Promise(function(resolve, reject){
-      client.search(request).then(
-        function(res){
-          let finished_books_by_month = res.aggregations.finished_books_by_month.buckets.map(function(m){
-              return m.doc_count
-            });
-          let avg_ratings_by_month = res.aggregations.finished_books_by_month.buckets.map((m) =>  m.rating.value);
-          resolve({
-              finished_books_by_month,
-              avg_ratings_by_month
-            });
-        }, reject); 
-    })
+  const transformFunc = ( (res) => (
+      {
+        finished_books_by_month: res.aggregations.finished_books_by_month.buckets.map( (m) => m.doc_count ),
+        avg_ratings_by_month: res.aggregations.finished_books_by_month.buckets.map( (m) => m.rating.value )
+      }
+    ))
 
+  return queryAndTransform( query, transformFunc) 
 }
 
-
 module.exports = {
+  getYears,
   getBoughtBooksByMonth,
   getStartedBooksByMonth,
   getFinishedBooksByMonth,

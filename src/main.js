@@ -2,23 +2,19 @@
 
 const query = require('./booksQueries') 
 
-var model = initModel();
-initView(model);
+initModel().then(initView, (err) => {console.log(err)})
 
 function initModel(){
-  var year = 2006;
-  var to = (new Date()).getFullYear()
-  var years = [];
-  while (year < to){
-    years.push(year);
-    year += 1;
-  }
-  
-  return {
-    input: {
-      years: years
-    }
-  };
+  return new Promise((resolve, reject) => {
+      query.getYears().then(
+        (res) => {
+          resolve ({
+              input: {
+                years: res.years
+              }
+            })
+        }, reject)
+    })
 }
 
 function initView(model){
