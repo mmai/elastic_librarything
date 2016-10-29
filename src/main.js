@@ -2,7 +2,7 @@ var moment = require('moment')
 
 const query = require('./booksQueries').initClient({
     elasticsearchUrl: 'http://127.0.0.1:9200',
-    elasticsearchIndex: 'librarything'
+    elasticsearchIndex: 'quantifiedself'
 }) 
 
 initModel().then(

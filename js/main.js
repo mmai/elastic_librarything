@@ -4490,7 +4490,7 @@ var moment = require('moment');
 
 var query = require('./booksQueries').initClient({
   elasticsearchUrl: 'http://127.0.0.1:9200',
-  elasticsearchIndex: 'librarything'
+  elasticsearchIndex: 'quantifiedself'
 });
 
 initModel().then(initView, function (err) {

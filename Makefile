@@ -8,7 +8,9 @@ start:
 status:
 	curl http://127.0.0.1:9200/_cat/indices
 reset:
-	node ./bin/elastic-librarything.js aipotu --reset
+	node ./bin/elastic-librarything.js aipotu --index=quantifiedself --reset 
+update:
+	node ./bin/elastic-librarything.js aipotu --index=quantifiedself --update=100
 view:
 	# firefox http://127.0.0.1:5601
 	firefox index.html
