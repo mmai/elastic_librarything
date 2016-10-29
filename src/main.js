@@ -112,15 +112,27 @@ function generateYearStats(year){
 
   query.getBooks(year).then((res) => {
       const journal = makeJournal(res.books, year)
-      let html = "<table class='.table'>";
+      let html = "<table class='table'>";
       for (let entry of journal){
-        html = html + '<tr>' +
-          '<td>' + moment(entry.date).format('MMMM Do') + '</td>' +
-          '<td>' + entry.type + '</td>' +
-          '<td>' + entry.book.author + '</td>' +
-          '<td>' + entry.book.title + '</td>' +
-          '<td>' + entry.book.rating + '</td>' +
-          '</tr>'
+        let entryClass = ''
+        switch(entry.type){
+        case 'acquired':
+          entryClass = 'warning'
+          break;
+        case 'started':
+          entryClass = 'info'
+          break;
+        case 'finished':
+          entryClass = 'success'
+          break;
+        }
+        html = html + `<tr class="${entryClass}">
+          <td> ${moment(entry.date).format('MMMM Do')}</td>
+          <td>${entry.type}</td>
+          <td>${entry.book.author}</td>
+          <td>${entry.book.title}</td>
+          <td>${entry.book.rating ? entry.book.rating : ''}</td>
+          </tr>`
       }
       document.getElementById('journal').innerHTML = html
     }, (err) => {

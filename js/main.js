@@ -4601,7 +4601,7 @@ function generateYearStats(year) {
 
   query.getBooks(year).then(function (res) {
     var journal = makeJournal(res.books, year);
-    var html = "<table class='.table'>";
+    var html = "<table class='table'>";
     var _iteratorNormalCompletion = true;
     var _didIteratorError = false;
     var _iteratorError = undefined;
@@ -4610,7 +4610,19 @@ function generateYearStats(year) {
       for (var _iterator = journal[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
         var entry = _step.value;
 
-        html = html + '<tr>' + '<td>' + moment(entry.date).format('MMMM Do') + '</td>' + '<td>' + entry.type + '</td>' + '<td>' + entry.book.author + '</td>' + '<td>' + entry.book.title + '</td>' + '<td>' + entry.book.rating + '</td>' + '</tr>';
+        var entryClass = '';
+        switch (entry.type) {
+          case 'acquired':
+            entryClass = 'warning';
+            break;
+          case 'started':
+            entryClass = 'info';
+            break;
+          case 'finished':
+            entryClass = 'success';
+            break;
+        }
+        html = html + ('<tr class="' + entryClass + '">\n          <td> ' + moment(entry.date).format('MMMM Do') + '</td>\n          <td>' + entry.type + '</td>\n          <td>' + entry.book.author + '</td>\n          <td>' + entry.book.title + '</td>\n          <td>' + (entry.book.rating ? entry.book.rating : '') + '</td>\n          </tr>');
       }
     } catch (err) {
       _didIteratorError = true;
